@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 10%;
+  --primary: 240 10% 10%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 5% 96%;
+  --secondary-foreground: 240 10% 10%;
+  --muted: 240 5% 96%;
+  --muted-foreground: 240 4% 46%;
+  --accent: 240 5% 94%;
+  --accent-foreground: 240 10% 10%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 240 6% 88%;
+  --input: 240 6% 88%;
+  --ring: 263 70% 55%;
+  --brand: 263 70% 55%;
+  --brand-foreground: 0 0% 100%;
+  --brand-glow: 276 70% 64%;
+  --neural-purple: #8a2be2;
+  --neural-purple-deep: #4b0082;
+  --neural-white: #ffffff;
+  --neural-black: #000000;
+  --neural-gray: #a0a0a0;
+}
+
+.dark {
+  --background: 240 18% 4%;
+  --foreground: 0 0% 98%;
+  --card: 240 14% 8%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 14% 8%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 240 14% 8%;
+  --secondary: 240 12% 12%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 12% 12%;
+  --muted-foreground: 240 5% 65%;
+  --accent: 240 12% 14%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62% 48%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 10% 18%;
+  --input: 240 10% 18%;
+  --ring: 263 85% 68%;
+  --brand: 263 85% 68%;
+  --brand-foreground: 0 0% 100%;
+  --brand-glow: 282 80% 72%;
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-jetbrains-sans), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(138, 43, 226, 0.3);
+  color: white;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--brand) / 0.4);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--brand) / 0.7);
+}
+
+.neural-glow {
+  box-shadow:
+    0 0 20px rgba(138, 43, 226, 0.15),
+    0 0 60px rgba(138, 43, 226, 0.05);
+}
+
+.neural-glow-strong {
+  box-shadow:
+    0 0 30px rgba(138, 43, 226, 0.3),
+    0 0 80px rgba(138, 43, 226, 0.1);
+}
+
+.neural-border {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.neural-glass {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--neural-purple);
+  outline-offset: 2px;
+}

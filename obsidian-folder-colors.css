@@ -1,0 +1,162 @@
+/* ==========================================================
+   OBSIDIAN FOLDER COLORS BY HIERARCHY (LEVEL)
+   + GRAPH VIEW NODE COLORS
+   
+   Copie este arquivo para: .obsidian/snippets/
+   Ative em: Configurações > Aparência > CSS Snippets
+   ========================================================== */
+
+
+/* ==========================================================
+   PARTE 1: CORES NA ÁRVORE DE PASTAS (FILE EXPLORER)
+   ========================================================== */
+
+/* Nível 1 (Pasta Raiz / Ex: Obyron) - Cinza Claro / Branco */
+.nav-folder.mod-root > .nav-folder-children > .nav-folder > .nav-folder-title {
+  color: #e2e8f0 !important;
+  font-weight: 700 !important;
+  border-left: 3px solid #e2e8f0;
+  padding-left: 6px;
+  background: rgba(226, 232, 240, 0.05);
+  border-radius: 4px;
+}
+
+/* Nível 2 (Sub-pastas diretas / Ex: Conhecimentos, Pessoas) - Amarelo / Dourado */
+.nav-folder.mod-root > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-title {
+  color: #fbbf24 !important;
+  font-weight: 600 !important;
+  border-left: 3px solid #fbbf24;
+  padding-left: 6px;
+  background: rgba(251, 191, 36, 0.05);
+  border-radius: 4px;
+}
+
+/* Nível 3 (Sub-pastas nível 3 / Ex: Isaque, Linguagens) - Azul / Ciano */
+.nav-folder.mod-root > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-title {
+  color: #3b82f6 !important;
+  font-weight: 600 !important;
+  border-left: 3px solid #3b82f6;
+  padding-left: 6px;
+  background: rgba(59, 130, 246, 0.05);
+  border-radius: 4px;
+}
+
+/* Nível 4 (Sub-pastas nível 4 / Ex: Pessoal, Projetos) - Verde Esmeralda */
+.nav-folder.mod-root > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-title {
+  color: #10b981 !important;
+  font-weight: 500 !important;
+  border-left: 3px solid #10b981;
+  padding-left: 6px;
+  background: rgba(16, 185, 129, 0.05);
+  border-radius: 4px;
+}
+
+/* Nível 5 (Sub-pastas nível 5) - Roxo / Violeta */
+.nav-folder.mod-root > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-title {
+  color: #8b5cf6 !important;
+  font-weight: 500 !important;
+  border-left: 3px solid #8b5cf6;
+  padding-left: 6px;
+  background: rgba(139, 92, 246, 0.05);
+  border-radius: 4px;
+}
+
+/* Nível 6+ - Rosa / Magenta */
+.nav-folder.mod-root > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-children > .nav-folder > .nav-folder-title {
+  color: #ec4899 !important;
+  font-weight: 500 !important;
+  border-left: 3px solid #ec4899;
+  padding-left: 6px;
+  background: rgba(236, 72, 153, 0.05);
+  border-radius: 4px;
+}
+
+/* Efeito de Hover em todas as pastas */
+.nav-folder-title:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  transition: background-color 0.2s ease;
+}
+
+/* Arquivos (notas) - cor padrão */
+.nav-file-title {
+  color: var(--text-muted) !important;
+  border-left: none !important;
+  background: none !important;
+  font-weight: normal !important;
+}
+.nav-file-title:hover {
+  color: var(--text-normal) !important;
+}
+
+
+/* ==========================================================
+   PARTE 2: CORES NO GRAPH VIEW POR TAG
+   
+   O Obsidian permite colorir nós do Graph View nativamente
+   usando a configuração de "Groups" no graph. Porém, para 
+   automatizar, o sistema Obyron coloca tags no frontmatter.
+   
+   Para configurar as cores no GRAPH VIEW:
+   
+   1. Abra o Graph View (Ctrl+G)
+   2. Clique no ícone de engrenagem (⚙️) no Graph View
+   3. Na seção "Groups", adicione regras:
+   
+   Grupo 1: tag:#pessoas     → Cor: #fbbf24 (Amarelo)
+   Grupo 2: tag:#conhecimentos → Cor: #3b82f6 (Azul)
+   Grupo 3: tag:#projetos    → Cor: #10b981 (Verde)
+   Grupo 4: tag:#automobilismo → Cor: #ef4444 (Vermelho)
+   Grupo 5: tag:#linguagens-de-programação → Cor: #8b5cf6 (Roxo)
+   Grupo 6: tag:#família     → Cor: #ec4899 (Rosa)
+   Grupo 7: tag:#amigos      → Cor: #f97316 (Laranja)
+   Grupo 8: tag:#habilidades → Cor: #06b6d4 (Ciano)
+   Grupo 9: tag:#obyron      → Cor: #a855f7 (Roxo Brilhante)
+   Grupo 10: path:Obyron/Conversas → Cor: #64748b (Cinza)
+   
+   Isso vai colorir cada nó no gráfico baseado na tag/pasta pai.
+   ========================================================== */
+
+
+/* ==========================================================
+   PARTE 3: ESTILOS DO GRAPH VIEW (VISUAL GERAL)
+   ========================================================== */
+
+/* Fundo do Graph View mais escuro */
+.graph-view.color-fill {
+  color: #0a0a0a !important;
+}
+
+/* Linhas de conexão mais suaves */
+.graph-view.color-line {
+  color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Linhas de conexão ao passar o mouse */
+.graph-view.color-line-highlight {
+  color: rgba(138, 43, 226, 0.5) !important;
+}
+
+/* Texto dos nós */
+.graph-view.color-text {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Nós não resolvidos (notas que não existem ainda) */
+.graph-view.color-fill-unresolved {
+  color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Nó ativo / focado */
+.graph-view.color-fill-focused {
+  color: #a855f7 !important;
+}
+
+/* Highlights */
+.graph-view.color-fill-highlight {
+  color: #c084fc !important;
+}
+
+/* Nó do arquivo atualmente aberto */
+.graph-view.color-fill-attachment {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
