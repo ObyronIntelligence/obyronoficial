@@ -35,16 +35,21 @@ export function PlansSection({ compact = false }: { compact?: boolean }) {
             <Card
               key={plan.id}
               className={cn(
-                "relative flex flex-col border-border/60 bg-card/60 backdrop-blur transition-all hover:border-foreground/30",
-                plan.highlighted && "border-foreground/40 shadow-[0_0_60px_-15px_hsl(var(--brand))]",
+                "group relative flex flex-col border-border/60 bg-card/60 backdrop-blur transition-[transform,box-shadow,border-color,background-color] duration-500 ease-out will-change-transform hover:scale-[1.015] hover:border-foreground/30 hover:shadow-[0_24px_80px_-28px_hsl(var(--brand)/0.45)]",
+                plan.highlighted &&
+                  "border-foreground/40 shadow-[0_0_60px_-15px_hsl(var(--brand))] hover:shadow-[0_28px_90px_-24px_hsl(var(--brand)/0.55)]",
               )}
             >
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 rounded-xl bg-[radial-gradient(circle_at_top,hsl(var(--brand)/0.18),transparent_58%)] opacity-0 transition-opacity duration-500 ease-out group-hover:opacity-100"
+              />
               {plan.highlighted && (
                 <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-foreground text-background">
                   Mais popular
                 </Badge>
               )}
-              <CardHeader className="space-y-2">
+              <CardHeader className="relative z-[1] space-y-2">
                 <CardTitle className="text-xl">{plan.name}</CardTitle>
                 <CardDescription className="text-sm">{plan.tagline}</CardDescription>
                 <div className="pt-3">
@@ -52,7 +57,7 @@ export function PlansSection({ compact = false }: { compact?: boolean }) {
                   <span className="text-sm text-muted-foreground">{plan.priceSuffix}</span>
                 </div>
               </CardHeader>
-              <CardContent className="flex flex-1 flex-col">
+              <CardContent className="relative z-[1] flex flex-1 flex-col">
                 <ul className="space-y-3">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2 text-sm">

@@ -18,6 +18,23 @@ interface LiquidMetalHeroProps {
   features?: string[];
 }
 
+const BASE_METAL_PROPS = {
+  colorBack: "#00000000",
+  colorTint: "#8b5cf6",
+  repetition: 2,
+  softness: 1.35,
+  shiftRed: 0.12,
+  shiftBlue: 0.18,
+  distortion: 0.3,
+  contour: 0.32,
+  shape: "metaballs" as const,
+  offsetX: 0,
+  offsetY: 0,
+  scale: 0.9,
+  rotation: 0,
+  speed: 0.8,
+};
+
 export function LiquidMetalHero({
   badge,
   title,
@@ -37,22 +54,10 @@ export function LiquidMetalHero({
         className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
       >
         <LiquidMetal
-          colorBack="#00000000"
-          colorTint="#8b5cf6"
-          repetition={3}
-          softness={1}
-          shiftRed={0.4}
-          shiftBlue={0.6}
-          distortion={0.6}
-          contour={0.8}
-          shape="metaballs"
-          offsetX={0}
-          offsetY={0}
-          scale={0.9}
-          rotation={0}
-          speed={1.4}
-          style={{ width: "120%", height: "120%", opacity: 0.85 }}
+          {...BASE_METAL_PROPS}
+          style={{ width: "120%", height: "120%", opacity: 0.5 }}
         />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,hsl(var(--background)/0.28),hsl(var(--background)/0.08)_38%,transparent_72%)]" />
       </div>
 
       <div className="container relative mx-auto flex min-h-[88vh] flex-col items-center justify-center px-6 py-24 text-center">
@@ -79,14 +84,14 @@ export function LiquidMetalHero({
 
           <motion.h1
             variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } }}
-            className="text-balance bg-gradient-to-b from-foreground via-foreground to-foreground/50 bg-clip-text text-5xl font-bold leading-[1.05] tracking-tighter text-transparent md:text-7xl lg:text-8xl"
+            className="text-balance bg-gradient-to-b from-foreground via-foreground to-foreground/70 bg-clip-text text-5xl font-bold leading-[1.05] tracking-tighter text-transparent drop-shadow-[0_8px_24px_hsl(var(--background)/0.35)] md:text-7xl lg:text-8xl"
           >
             {title}
           </motion.h1>
 
           <motion.p
             variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } }}
-            className="max-w-2xl text-balance text-base leading-relaxed text-muted-foreground md:text-lg"
+            className="max-w-2xl text-balance text-base leading-relaxed text-foreground/78 drop-shadow-[0_4px_18px_hsl(var(--background)/0.25)] md:text-lg"
           >
             {subtitle}
           </motion.p>
