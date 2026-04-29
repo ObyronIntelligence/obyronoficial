@@ -2,6 +2,7 @@
 
 import { Mail, MapPin, MessageCircle } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,9 +12,19 @@ import { Textarea } from "@/components/ui/textarea";
 
 export default function ContatoPage() {
   const [sent, setSent] = useState(false);
+  const { requireAuth } = useAuth();
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const allowed = requireAuth({
+      title: "Entre para enviar sua mensagem",
+      description: "O envio de contato tambem exige uma conta ativa para manter o historico do atendimento.",
+    });
+
+    if (!allowed) {
+      return;
+    }
+
     setSent(true);
     event.currentTarget.reset();
   };

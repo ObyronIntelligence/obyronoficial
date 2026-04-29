@@ -1,153 +1,174 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Settings, Wifi, WifiOff, Volume2, MessageSquareQuote, Mic, MicOff } from "lucide-react";
+import { Database, MessageSquareQuote, Mic, MicOff, Settings, Volume2, Wifi, WifiOff } from "lucide-react";
+import { ProtectedExperience } from "@/components/auth/protected-experience";
 import VoiceOrb from "@/components/ui/voice-orb";
-import {
-  SpeechEngine,
-  VoiceSynthesizer,
-  AudioAnalyzer,
-  type VoiceState,
-} from "@/lib/voice/speech";
 import { cn } from "@/lib/utils";
-import { AiModeToggle } from "@/components/site/ai-mode-toggle";
-import { Badge } from "@/components/ui/badge";
+import { voiceService, type VoiceState } from "@/lib/services/voice-service";
+import { neuralService } from "@/lib/services/neural-service";
+import { notesService } from "@/lib/services/notes-service";
+import type { NeuralVault } from "@/lib/types";
+
+function buildConversationPairs(vault: NeuralVault) {
+  const pairs: { user: string; assistant?: string; time: string }[] = [];
+
+  for (let index = 0; index < vault.interactions.length; index += 1) {
+    const item = vault.interactions[index];
+
+    if (item.role !== "user") {
+      continue;
+    }
+
+    const nextItem = vault.interactions[index + 1];
+    const time = new Date(item.timestamp).toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const pair: { user: string; assistant?: string; time: string } = {
+      user: item.text,
+      time,
+    };
+
+    if (nextItem?.role === "assistant") {
+      pair.assistant = nextItem.text;
+      index += 1;
+    }
+
+    pairs.push(pair);
+  }
+
+  return pairs;
+}
 
 export default function NeuralPage() {
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
-  const [chatHistory, setChatHistory] = useState<
-    { role: "user" | "obyron"; text: string; time: string }[]
-  >([]);
   const [audioLevel, setAudioLevel] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
   const [obsidianConnected, setObsidianConnected] = useState(false);
   const [googleConfigured, setGoogleConfigured] = useState(false);
+  const [supabaseConnected, setSupabaseConnected] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [vault, setVault] = useState<NeuralVault | null>(null);
 
-  const speechEngine = useRef<SpeechEngine | null>(null);
-  const synthesizer = useRef<VoiceSynthesizer | null>(null);
-  const analyzer = useRef<AudioAnalyzer | null>(null);
+  const runtimeRef = useRef<ReturnType<typeof voiceService.create> | null>(null);
+  const vaultRef = useRef(vault);
   const animFrameRef = useRef<number>(0);
-  const transcriptTimeout = useRef<NodeJS.Timeout | null>(null);
+  const transcriptTimeoutRef = useRef<number | null>(null);
   const historyEndRef = useRef<HTMLDivElement>(null);
+  const handleUserMessageRef = useRef<(text: string) => void>();
+
+  useEffect(() => {
+    const loadedVault = notesService.loadVault();
+    vaultRef.current = loadedVault;
+    setVault(loadedVault);
+    setVoiceSupported(voiceService.isBrowserSupported());
+
+    void neuralService.checkIntegrations().then((integrations) => {
+      setObsidianConnected(integrations.obsidianConnected);
+      setGoogleConfigured(integrations.googleConfigured);
+      setSupabaseConnected(integrations.supabaseConnected);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (vault) {
+      vaultRef.current = vault;
+    }
+  }, [vault]);
 
   useEffect(() => {
     historyEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory]);
-
-  const updateAudioLevel = useCallback(() => {
-    if (analyzer.current) {
-      const level = analyzer.current.getAmplitude();
-      setAudioLevel(level);
-    }
-    animFrameRef.current = requestAnimationFrame(updateAudioLevel);
-  }, []);
-
-  const initialize = useCallback(async () => {
-    const analyzerInst = new AudioAnalyzer();
-    const audioOk = await analyzerInst.init();
-    if (audioOk) {
-      analyzer.current = analyzerInst;
-      animFrameRef.current = requestAnimationFrame(updateAudioLevel);
-    }
-
-    const engine = new SpeechEngine({
-      onTranscript: (text, isFinal) => {
-        setTranscript(text);
-
-        if (transcriptTimeout.current) {
-          clearTimeout(transcriptTimeout.current);
-        }
-
-        if (isFinal) {
-          transcriptTimeout.current = setTimeout(() => {
-            handleUserMessage(text);
-          }, 1500);
-        }
-      },
-      onStateChange: (state) => setVoiceState(state),
-      onError: (err) => {
-        console.error("[Speech]", err);
-        setVoiceState("idle");
-      },
-    });
-    engine.init();
-    speechEngine.current = engine;
-
-    const synth = new VoiceSynthesizer();
-    synth.init();
-    synthesizer.current = synth;
-
-    try {
-      const res = await fetch("/api/obsidian?action=ping");
-      const data = await res.json();
-      setObsidianConnected(data.connected);
-    } catch {
-      setObsidianConnected(false);
-    }
-
-    try {
-      const res = await fetch("/api/google");
-      const data = await res.json();
-      setGoogleConfigured(Boolean(data.configured));
-    } catch {
-      setGoogleConfigured(false);
-    }
-
-    setIsInitialized(true);
-  }, [updateAudioLevel]);
+  }, [vault?.interactions]);
 
   useEffect(() => {
     return () => {
+      if (transcriptTimeoutRef.current) {
+        window.clearTimeout(transcriptTimeoutRef.current);
+      }
+
       cancelAnimationFrame(animFrameRef.current);
-      analyzer.current?.disconnect();
-      synthesizer.current?.stop();
+      runtimeRef.current?.destroy();
     };
   }, []);
 
-  const handleUserMessage = async (text: string) => {
-    if (!text.trim()) return;
+  const updateAudioLevel = useCallback(() => {
+    setAudioLevel(runtimeRef.current?.getAudioLevel() || 0);
+    animFrameRef.current = requestAnimationFrame(updateAudioLevel);
+  }, []);
 
-    speechEngine.current?.stopListening();
+  handleUserMessageRef.current = (text: string) => {
+    void handleUserMessage(text);
+  };
+
+  async function initializeVoice(autoStart = false) {
+    if (runtimeRef.current) {
+      if (autoStart) {
+        runtimeRef.current.startListening();
+      }
+      return;
+    }
+
+    const runtime = voiceService.create({
+      onTranscript: (text, isFinal) => {
+        setTranscript(text);
+
+        if (transcriptTimeoutRef.current) {
+          window.clearTimeout(transcriptTimeoutRef.current);
+        }
+
+        if (isFinal && text.trim()) {
+          transcriptTimeoutRef.current = window.setTimeout(() => {
+            handleUserMessageRef.current?.(text);
+          }, 1200);
+        }
+      },
+      onStateChange: (state) => setVoiceState(state),
+      onError: (error) => {
+        setResponse(error);
+        setVoiceState("idle");
+      },
+    });
+
+    runtimeRef.current = runtime;
+    const status = await runtime.initialize();
+    setIsInitialized(true);
+
+    if (status.audioEnabled) {
+      animFrameRef.current = requestAnimationFrame(updateAudioLevel);
+    }
+
+    if (autoStart && status.speechEnabled) {
+      runtime.startListening();
+    }
+  }
+
+  async function handleUserMessage(text: string) {
+    if (!text.trim()) {
+      return;
+    }
+
+    if (!vaultRef.current) {
+      return;
+    }
+
+    runtimeRef.current?.stopListening();
     setVoiceState("processing");
     setResponse("");
 
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(
-      now.getMinutes(),
-    ).padStart(2, "0")}`;
-    setChatHistory((prev) => [...prev, { role: "user", text, time: timeStr }]);
-
     try {
-      const res = await fetch("/api/neural", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: text }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data.error) {
-        setResponse(data.error || "Erro desconhecido.");
-        setVoiceState("idle");
-        return;
-      }
-
-      const reply = data.reply || "Nao consegui processar.";
-      setResponse(reply);
-      const replyTime = new Date();
-      const replyTimeStr = `${String(replyTime.getHours()).padStart(2, "0")}:${String(
-        replyTime.getMinutes(),
-      ).padStart(2, "0")}`;
-      setChatHistory((prev) => [...prev, { role: "obyron", text: reply, time: replyTimeStr }]);
+      const result = await neuralService.processVoiceInput(vaultRef.current, text);
+      vaultRef.current = result.vault;
+      setVault(result.vault);
+      setResponse(result.reply);
       setVoiceState("speaking");
 
-      saveToObsidian(text, reply);
-
-      synthesizer.current?.speak(reply, () => {
+      runtimeRef.current?.speak(result.reply, () => {
         setVoiceState("idle");
         setTranscript("");
       });
@@ -155,72 +176,52 @@ export default function NeuralPage() {
       setResponse("Erro de conexao com o core neural.");
       setVoiceState("idle");
     }
-  };
+  }
 
-  const saveToObsidian = async (userText: string, aiReply: string) => {
-    try {
-      const now = new Date();
-      const dateStr = now.toISOString().split("T")[0];
-      const timeStr = now.toTimeString().slice(0, 5);
-      const notePath = `Obyron/Conversas/${dateStr}.md`;
+  async function toggleListening() {
+    if (!voiceSupported) {
+      setResponse("Seu navegador atual nao oferece suporte ao reconhecimento de voz necessario para a Neural.");
+      return;
+    }
 
-      const entry = `\n## ${timeStr}\n**Voce:** ${userText}\n\n**Obyron:** ${aiReply}\n`;
-
-      await fetch("/api/obsidian", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "append", path: notePath, content: entry }),
-      });
-    } catch {}
-  };
-
-  const toggleListening = () => {
     if (!isInitialized) {
-      initialize();
+      await initializeVoice(true);
+      return;
+    }
+
+    if (voiceState === "processing") {
+      return;
+    }
+
+    if (voiceState === "speaking") {
+      runtimeRef.current?.stopSpeaking();
+      setVoiceState("idle");
       return;
     }
 
     if (voiceState === "listening") {
-      speechEngine.current?.stopListening();
+      runtimeRef.current?.stopListening();
       setVoiceState("idle");
-    } else if (voiceState === "idle") {
-      setTranscript("");
-      setResponse("");
-      speechEngine.current?.startListening();
+      return;
     }
-  };
 
-  const conversationPairs = (() => {
-    const pairs: { user: string; obyron?: string; time: string }[] = [];
-    for (let i = 0; i < chatHistory.length; i++) {
-      if (chatHistory[i].role === "user") {
-        const pair: { user: string; obyron?: string; time: string } = {
-          user: chatHistory[i].text,
-          time: chatHistory[i].time,
-        };
-        if (i + 1 < chatHistory.length && chatHistory[i + 1].role === "obyron") {
-          pair.obyron = chatHistory[i + 1].text;
-          i++;
-        }
-        pairs.push(pair);
-      }
-    }
-    return pairs;
-  })();
+    setTranscript("");
+    setResponse("");
+    runtimeRef.current?.startListening();
+  }
+
+  const conversationPairs = vault ? buildConversationPairs(vault) : [];
 
   return (
+    <ProtectedExperience
+      title="Neural disponivel apos login"
+      description="Para conversar com a Neural, abrir memoria e usar os controles de voz, e necessario entrar ou criar sua conta."
+    >
     <section className="relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,hsl(var(--brand)/0.14)_0%,transparent_26%,transparent_100%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_18%,hsl(var(--brand-glow)/0.10)_0%,transparent_22%,transparent_100%)]" />
 
       <div className="container mx-auto flex min-h-[calc(100svh-7.5rem)] flex-col overflow-hidden px-4 py-5 md:px-6 md:py-6">
-        <div className="mb-4 flex flex-col items-center gap-3 text-center">
-          <Badge variant="outline" className="border-border/60 bg-card/40 backdrop-blur">
-            ObyronAI · beta
-          </Badge>
-          <AiModeToggle active="neural" />
-        </div>
-
         <div className="grid flex-1 items-center gap-5 xl:grid-cols-[320px_minmax(440px,1fr)_320px]">
           <section className="hidden h-[560px] xl:flex flex-col rounded-[28px] border border-border/60 bg-card/45 backdrop-blur-xl shadow-[0_20px_80px_hsl(var(--brand)/0.08)]">
             <div className="flex items-center gap-3 border-b border-border/60 px-5 py-4">
@@ -243,9 +244,9 @@ export default function NeuralPage() {
                 </div>
               )}
 
-              {conversationPairs.map((pair, idx) => (
+              {conversationPairs.map((pair, index) => (
                 <motion.div
-                  key={idx}
+                  key={`${pair.time}-${index}`}
                   initial={{ opacity: 0, x: -20, scale: 0.98 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   transition={{ duration: 0.35, ease: [0.2, 0.65, 0.3, 0.9] }}
@@ -263,10 +264,10 @@ export default function NeuralPage() {
                       <p className="text-sm leading-relaxed text-foreground/90">{pair.user}</p>
                     </div>
 
-                    {pair.obyron ? (
+                    {pair.assistant ? (
                       <div className="rounded-2xl border border-[hsl(var(--brand)/0.14)] bg-[hsl(var(--brand)/0.06)] p-3">
-                        <p className="mb-1 text-[11px] uppercase tracking-[0.18em] text-brand">Obyron</p>
-                        <p className="text-sm leading-relaxed text-foreground/85">{pair.obyron}</p>
+                        <p className="mb-1 text-[11px] uppercase tracking-[0.18em] text-brand">Neural</p>
+                        <p className="text-sm leading-relaxed text-foreground/85">{pair.assistant}</p>
                       </div>
                     ) : (
                       <div className="rounded-2xl border border-border/60 bg-card/70 p-3 text-sm text-muted-foreground">
@@ -289,7 +290,8 @@ export default function NeuralPage() {
                 />
 
                 <motion.button
-                  onClick={toggleListening}
+                  type="button"
+                  onClick={() => void toggleListening()}
                   whileTap={{ scale: 0.95 }}
                   className={cn(
                     "relative z-20 flex h-16 w-16 items-center justify-center rounded-full border backdrop-blur-md transition-all duration-300 md:h-20 md:w-20",
@@ -300,12 +302,13 @@ export default function NeuralPage() {
                     voiceState === "idle" &&
                       "border-border/60 bg-card/70 text-foreground hover:border-foreground/25 hover:bg-card",
                   )}
-                  disabled={voiceState === "processing" || voiceState === "speaking"}
+                  disabled={voiceState === "processing"}
                 >
                   {voiceState === "listening" ? <MicOff size={22} /> : <Mic size={22} />}
                 </motion.button>
               </div>
             </div>
+
           </section>
 
           <section className="flex h-[560px] flex-col rounded-[28px] border border-border/60 bg-card/45 p-5 backdrop-blur-xl shadow-[0_20px_80px_hsl(var(--brand)/0.08)]">
@@ -386,12 +389,12 @@ export default function NeuralPage() {
                         Processando...
                       </p>
                       <div className="flex justify-center gap-2">
-                        {[0, 1, 2].map((i) => (
+                        {[0, 1, 2].map((item) => (
                           <motion.div
-                            key={i}
+                            key={item}
                             className="h-2.5 w-2.5 rounded-full bg-amber-400"
                             animate={{ y: [0, -8, 0] }}
-                            transition={{ duration: 0.65, repeat: Infinity, delay: i * 0.14 }}
+                            transition={{ duration: 0.65, repeat: Infinity, delay: item * 0.14 }}
                           />
                         ))}
                       </div>
@@ -409,8 +412,8 @@ export default function NeuralPage() {
                         Pronto
                       </p>
                       <p className="text-sm leading-relaxed text-muted-foreground">
-                        Ative o microfone para conversar. A funcionalidade continua a mesma; apenas o
-                        visual foi alinhado ao restante do site.
+                        Ative o microfone para conversar. A resposta da Neural continua aparecendo aqui em tempo
+                        real, junto com o que voce acabou de falar.
                       </p>
                     </motion.div>
                   )}
@@ -422,16 +425,14 @@ export default function NeuralPage() {
       </div>
 
       <AnimatePresence>
-        {showSettings && (
+      {showSettings && (
           <motion.div
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             className="fixed right-5 top-24 z-40 w-80 rounded-[24px] border border-border/60 bg-background/92 p-5 backdrop-blur-xl shadow-[0_20px_80px_hsl(var(--brand)/0.08)]"
           >
-            <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.22em] text-foreground">
-              Configuracoes
-            </h3>
+            <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.22em] text-foreground">Configuracoes</h3>
 
             <div className="space-y-3">
               <SettingRow
@@ -449,7 +450,7 @@ export default function NeuralPage() {
                 <div className="h-1.5 w-24 overflow-hidden rounded-full bg-border/60">
                   <motion.div
                     className="h-full rounded-full bg-brand"
-                    animate={{ width: `${audioLevel * 100}%` }}
+                    animate={{ width: `${Math.max(audioLevel * 100, 4)}%` }}
                     transition={{ duration: 0.1 }}
                   />
                 </div>
@@ -459,31 +460,44 @@ export default function NeuralPage() {
                 value={googleConfigured ? "Pronto" : "Nao configurado"}
                 tone={googleConfigured ? "text-emerald-400" : "text-muted-foreground"}
               />
+              <SettingRow
+                label="Supabase"
+                value={supabaseConnected ? "Conectado" : "Nao conectado"}
+                tone={supabaseConnected ? "text-emerald-400" : "text-amber-300"}
+                icon={Database}
+              />
             </div>
 
             <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-              Configure `OBSIDIAN_API_URL`, `OBSIDIAN_API_KEY` e as credenciais Google no
-              `.env.local` para habilitar memoria e automacoes.
+              Configure `OBSIDIAN_API_URL`, `OBSIDIAN_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`,
+              `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e as credenciais Google no `.env.local` para habilitar
+              memoria, sincronizacao local e futuras automacoes.
             </p>
           </motion.div>
         )}
       </AnimatePresence>
     </section>
+    </ProtectedExperience>
   );
 }
 
 function SettingRow({
+  icon: Icon,
   label,
   value,
   tone,
 }: {
+  icon?: typeof Database;
   label: string;
   value: string;
   tone: string;
 }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/55 px-4 py-3">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="flex items-center gap-2 text-xs text-muted-foreground">
+        {Icon ? <Icon className="h-3.5 w-3.5" /> : null}
+        {label}
+      </span>
       <span className={cn("text-xs", tone)}>{value}</span>
     </div>
   );

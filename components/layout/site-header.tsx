@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Moon, Sparkles, Sun, X } from "lucide-react";
+import { LogOut, Menu, Moon, Sparkles, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,8 @@ export function SiteHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const { isAuthenticated, profile, signOut, user } = useAuth();
+  const accountLabel = profile?.username ? `@${profile.username}` : user?.email || "Minha conta";
 
   useEffect(() => {
     const saved = window.localStorage.getItem("obyron-theme");
@@ -71,18 +74,39 @@ export function SiteHeader() {
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
-          <Link href="/auth/signin" className={buttonVariants({ variant: "ghost", size: "sm" })}>
-            Entrar
-          </Link>
-          <Link
-            href="/auth/signup"
-            className={buttonVariants({
-              size: "sm",
-              className: "bg-foreground text-background hover:bg-foreground/90",
-            })}
-          >
-            Criar conta
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link href="/neural" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+                {accountLabel}
+              </Link>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className={buttonVariants({
+                  size: "sm",
+                  className: "bg-foreground text-background hover:bg-foreground/90",
+                })}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sair
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/auth/signin" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+                Entrar
+              </Link>
+              <Link
+                href="/auth/signup"
+                className={buttonVariants({
+                  size: "sm",
+                  className: "bg-foreground text-background hover:bg-foreground/90",
+                })}
+              >
+                Criar conta
+              </Link>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-1 justify-self-end md:hidden">
@@ -119,23 +143,50 @@ export function SiteHeader() {
               </Link>
             ))}
             <div className="mt-2 flex gap-2">
-              <Link
-                href="/auth/signin"
-                onClick={() => setOpen(false)}
-                className={buttonVariants({ variant: "outline", size: "sm", className: "flex-1" })}
-              >
-                Entrar
-              </Link>
-              <Link
-                href="/auth/signup"
-                onClick={() => setOpen(false)}
-                className={buttonVariants({
-                  size: "sm",
-                  className: "flex-1 bg-foreground text-background hover:bg-foreground/90",
-                })}
-              >
-                Criar conta
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    href="/neural"
+                    onClick={() => setOpen(false)}
+                    className={buttonVariants({ variant: "outline", size: "sm", className: "flex-1" })}
+                  >
+                    Minha conta
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      void signOut();
+                    }}
+                    className={buttonVariants({
+                      size: "sm",
+                      className: "flex-1 bg-foreground text-background hover:bg-foreground/90",
+                    })}
+                  >
+                    Sair
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/auth/signin"
+                    onClick={() => setOpen(false)}
+                    className={buttonVariants({ variant: "outline", size: "sm", className: "flex-1" })}
+                  >
+                    Entrar
+                  </Link>
+                  <Link
+                    href="/auth/signup"
+                    onClick={() => setOpen(false)}
+                    className={buttonVariants({
+                      size: "sm",
+                      className: "flex-1 bg-foreground text-background hover:bg-foreground/90",
+                    })}
+                  >
+                    Criar conta
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

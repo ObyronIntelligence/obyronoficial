@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { AuthProvider } from "@/components/auth/auth-provider";
 import { AppShell } from "@/components/layout/app-shell";
-import { AuthSessionProvider } from "@/components/providers/session-provider";
 
 const jetBrainsSans = localFont({
   src: "./fonts/JetBrainsSans.ttf",
@@ -23,9 +23,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="dark">
       <body className={`${jetBrainsSans.variable} antialiased`}>
-        <AuthSessionProvider>
+        <AuthProvider>
           <AppShell>{children}</AppShell>
-        </AuthSessionProvider>
+        </AuthProvider>
       </body>
     </html>
   );

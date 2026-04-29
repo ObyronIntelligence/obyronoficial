@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { Check } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -13,6 +16,8 @@ import { cn } from "@/lib/utils";
 import { PLANS } from "@/lib/site-data";
 
 export function PlansSection({ compact = false }: { compact?: boolean }) {
+  const { requireAuth } = useAuth();
+
   return (
     <section className="relative w-full py-24">
       <div className="container mx-auto px-6">
@@ -68,7 +73,17 @@ export function PlansSection({ compact = false }: { compact?: boolean }) {
                 </ul>
                 <div className="mt-6 pt-4">
                   <Link
-                    href="/auth/signup"
+                    href="/neural"
+                    onClick={(event) => {
+                      const allowed = requireAuth({
+                        title: `Desbloqueie o plano ${plan.name}`,
+                        description: "Crie sua conta ou entre para contratar e continuar com este plano.",
+                      });
+
+                      if (!allowed) {
+                        event.preventDefault();
+                      }
+                    }}
                     className={buttonVariants({
                       variant: plan.highlighted ? "default" : "outline",
                       className: cn(

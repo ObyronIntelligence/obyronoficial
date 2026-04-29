@@ -1,7 +1,9 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { normalizeAuthNextPath, toAbsoluteBrowserUrl } from "@/lib/auth/redirects";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 function GoogleMark() {
@@ -29,22 +31,53 @@ function GoogleMark() {
 
 export function GoogleAuthButton({
   label,
-  callbackUrl = "/",
+  nextPath = "/",
   className,
+  onError,
 }: {
   label: string;
-  callbackUrl?: string;
+  nextPath?: string;
   className?: string;
+  onError?: (message: string) => void;
 }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    setLoading(true);
+    onError?.("");
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const redirectTo = toAbsoluteBrowserUrl(normalizeAuthNextPath(nextPath, "/"));
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Nao foi possivel iniciar a autenticacao com Google agora.";
+
+      onError?.(message);
+      setLoading(false);
+    }
+  };
+
   return (
     <Button
       type="button"
       variant="outline"
+      disabled={loading}
       className={cn("w-full gap-2 border-border/60 bg-background/70 hover:bg-accent/80", className)}
-      onClick={() => signIn("google", { callbackUrl })}
+      onClick={() => void handleClick()}
     >
       <GoogleMark />
-      {label}
+      {loading ? "Conectando..." : label}
     </Button>
   );
 }

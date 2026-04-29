@@ -64,3 +64,100 @@ export interface NeuralApiResponse {
   };
   error?: string;
 }
+
+export type NeuralEditorMode = "edit" | "preview";
+
+export interface NeuralMemoryCapture {
+  id: string;
+  text: string;
+  summary: string;
+  timestamp: string;
+  reply?: string;
+}
+
+export interface NeuralConversationEntry {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  timestamp: string;
+  notePath?: string;
+  tags: string[];
+}
+
+export interface NeuralNote {
+  id: string;
+  title: string;
+  slug: string;
+  type: "category" | "subcategory";
+  path: string;
+  folderPath: string;
+  parentPath: string | null;
+  markdown: string;
+  preview: string;
+  tags: string[];
+  links: string[];
+  memories: NeuralMemoryCapture[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NeuralFolder {
+  id: string;
+  name: string;
+  slug: string;
+  path: string;
+  depth: number;
+  parentPath: string | null;
+  notePath: string;
+  childPaths: string[];
+}
+
+export interface NeuralTag {
+  id: string;
+  label: string;
+  slug: string;
+  count: number;
+  tone: "brand" | "emerald" | "sky" | "amber" | "rose";
+}
+
+export interface NeuralFolderTreeNode {
+  folder: NeuralFolder;
+  note?: NeuralNote;
+  children: NeuralFolderTreeNode[];
+}
+
+export interface NeuralClassificationResult {
+  parentCategory: string;
+  subcategory: string;
+  noteTitle: string;
+  folderPath: string;
+  notePath: string;
+  parentNotePath: string;
+  tags: string[];
+  summary: string;
+  introduction: string;
+  parentIntroduction: string;
+  relations: string[];
+  keywords: string[];
+  confidence: number;
+}
+
+export interface NeuralVault {
+  version: number;
+  notes: NeuralNote[];
+  folders: NeuralFolder[];
+  tags: NeuralTag[];
+  interactions: NeuralConversationEntry[];
+  activeNotePath: string;
+  updatedAt: string;
+  lastClassification?: NeuralClassificationResult;
+}
+
+export interface NeuralProcessingResult {
+  reply: string;
+  classification: NeuralClassificationResult;
+  vault: NeuralVault;
+  activeNotePath: string;
+  source: "remote" | "fallback";
+  memoryContext?: string;
+}
