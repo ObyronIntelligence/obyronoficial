@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { normalizeAuthNextPath, toAbsoluteBrowserUrl } from "@/lib/auth/redirects";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -47,12 +46,34 @@ export function GoogleAuthButton({
     onError?.("");
 
     try {
+      const healthPayload = await fetch("/api/supabase", {
+        cache: "no-store",
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            return null;
+          }
+
+          return response.json();
+        })
+        .catch(() => null);
+
+      const googleKnownDisabled =
+        healthPayload?.connected === true &&
+        Array.isArray(healthPayload?.authProviders) &&
+        !healthPayload.authProviders.includes("google");
+
+      if (googleKnownDisabled) {
+        throw new Error("O login com Google ainda nao foi habilitado no Supabase.");
+      }
+
       const supabase = getSupabaseBrowserClient();
-      const redirectTo = toAbsoluteBrowserUrl(normalizeAuthNextPath(nextPath, "/"));
+      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      callbackUrl.searchParams.set("next", nextPath);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo,
+          redirectTo: callbackUrl.toString(),
         },
       });
 
@@ -73,6 +94,7 @@ export function GoogleAuthButton({
       type="button"
       variant="outline"
       disabled={loading}
+      aria-busy={loading}
       className={cn("w-full gap-2 border-border/60 bg-background/70 hover:bg-accent/80", className)}
       onClick={() => void handleClick()}
     >

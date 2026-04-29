@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { AuthFeedback } from "@/components/auth/auth-feedback";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { normalizeAuthNextPath } from "@/lib/auth/redirects";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { classifyEmailSignupState } from "@/lib/supabase/signup";
+
+type EmailStatusResponse =
+  | {
+      available: true;
+      providers: string[];
+      status: "confirmed" | "not_found" | "pending";
+    }
+  | {
+      available: false;
+      reason: "admin_not_configured";
+    };
 
 async function verifyEmailOtp(email: string, token: string) {
   const supabase = getSupabaseBrowserClient();
@@ -34,8 +47,25 @@ async function verifyEmailOtp(email: string, token: string) {
   return lastError || "Nao foi possivel validar o codigo.";
 }
 
+async function fetchEmailStatus(email: string) {
+  const response = await fetch("/api/auth/email-status", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return (await response.json()) as EmailStatusResponse;
+}
+
 export default function SignupPage() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [nextPath, setNextPath] = useState("/neural");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -53,6 +83,14 @@ export default function SignupPage() {
     setNextPath(normalizeAuthNextPath(params.get("next")));
   }, []);
 
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) {
+      return;
+    }
+
+    router.replace(nextPath);
+  }, [authLoading, isAuthenticated, nextPath, router]);
+
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage("");
@@ -66,8 +104,40 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
+      const emailStatus = await fetchEmailStatus(email);
+
+      if (emailStatus?.available) {
+        if (emailStatus.status === "confirmed") {
+          const usesGoogleOnly =
+            emailStatus.providers.includes("google") && !emailStatus.providers.includes("email");
+
+          setErrorMessage(
+            usesGoogleOnly
+              ? "Este e-mail ja esta cadastrado com Google. Entre usando Google ou recupere o acesso antes de criar senha."
+              : "Este e-mail ja esta cadastrado. Entre na sua conta ou redefina a senha.",
+          );
+          return;
+        }
+
+        if (emailStatus.status === "pending") {
+          const supabase = getSupabaseBrowserClient();
+          const { error: resendError } = await supabase.auth.resend({
+            type: "signup",
+            email,
+          });
+
+          setStep("verify");
+          setMessage(
+            resendError
+              ? "Ja existe um cadastro pendente para esse e-mail. Use o codigo de confirmacao mais recente para continuar."
+              : "Ja existe um cadastro pendente para esse e-mail. Reenviamos um novo codigo de confirmacao.",
+          );
+          return;
+        }
+      }
+
       const supabase = getSupabaseBrowserClient();
-      const { error } = await supabase.auth.signUp({
+      const response = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -78,8 +148,30 @@ export default function SignupPage() {
         },
       });
 
-      if (error) {
-        setErrorMessage(error.message);
+      if (response.error) {
+        setErrorMessage(response.error.message);
+        return;
+      }
+
+      const signupState = classifyEmailSignupState(response);
+
+      if (signupState === "existing_confirmed") {
+        setErrorMessage("Este e-mail ja esta cadastrado. Entre na sua conta ou redefina a senha.");
+        return;
+      }
+
+      if (signupState === "existing_pending") {
+        const { error: resendError } = await supabase.auth.resend({
+          type: "signup",
+          email,
+        });
+
+        setStep("verify");
+        setMessage(
+          resendError
+            ? "Ja existe um cadastro pendente para esse e-mail. Use o codigo de confirmacao mais recente para continuar."
+            : "Ja existe um cadastro pendente para esse e-mail. Reenviamos um novo codigo de confirmacao.",
+        );
         return;
       }
 

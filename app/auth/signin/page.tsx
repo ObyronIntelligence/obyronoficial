@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { AuthFeedback } from "@/components/auth/auth-feedback";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ async function verifyEmailOtp(email: string, token: string) {
 
 export default function SigninPage() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [nextPath, setNextPath] = useState("/neural");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,6 +52,14 @@ export default function SigninPage() {
     const params = new URLSearchParams(window.location.search);
     setNextPath(normalizeAuthNextPath(params.get("next")));
   }, []);
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) {
+      return;
+    }
+
+    router.replace(nextPath);
+  }, [authLoading, isAuthenticated, nextPath, router]);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

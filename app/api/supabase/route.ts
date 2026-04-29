@@ -32,13 +32,16 @@ export async function GET() {
     }
 
     const payload = await response.json();
+    const authProviders = Object.entries(payload?.external || {})
+      .filter(([, enabled]) => enabled === true)
+      .map(([provider]) => provider);
 
     return NextResponse.json({
       configured: true,
       connected: true,
       projectRef: env.projectRef,
       resolvedUrl: env.url,
-      authProviders: payload?.external?.providers || [],
+      authProviders,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao consultar o Supabase.";

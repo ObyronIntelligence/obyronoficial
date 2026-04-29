@@ -2,6 +2,7 @@ type SupabaseEnv = {
   configured: boolean;
   projectRef: string | null;
   publishableKey: string;
+  serviceRoleKey: string;
   url: string;
 };
 
@@ -43,12 +44,14 @@ export function getSupabaseEnv(): SupabaseEnv {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_KEY ||
     "";
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
   const url = normalizeSupabaseUrl(rawUrl);
   const projectRef = deriveProjectRef(url);
 
   return {
     url,
     publishableKey,
+    serviceRoleKey,
     projectRef,
     configured: Boolean(url && publishableKey),
   };
@@ -60,6 +63,27 @@ export function requireSupabaseEnv() {
   if (!env.configured) {
     throw new Error(
       "Supabase nao configurado. Preencha NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY no .env.local.",
+    );
+  }
+
+  return env;
+}
+
+export function getSupabaseAdminEnv() {
+  const env = getSupabaseEnv();
+
+  return {
+    ...env,
+    configured: Boolean(env.url && env.serviceRoleKey),
+  };
+}
+
+export function requireSupabaseAdminEnv() {
+  const env = getSupabaseAdminEnv();
+
+  if (!env.configured) {
+    throw new Error(
+      "Supabase admin nao configurado. Preencha SUPABASE_SERVICE_ROLE_KEY no .env.local para habilitar validacoes seguras de cadastro.",
     );
   }
 
