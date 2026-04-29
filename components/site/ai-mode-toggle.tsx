@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BrainCircuit, Sparkles } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { cn } from "@/lib/utils";
 
 export function AiModeToggle({
@@ -11,6 +12,8 @@ export function AiModeToggle({
   active: "obyronai" | "neural";
   className?: string;
 }) {
+  const { requireAuth } = useAuth();
+
   return (
     <div
       role="tablist"
@@ -22,6 +25,16 @@ export function AiModeToggle({
     >
       <Link
         href="/obyronai"
+        onClick={(event) => {
+          const allowed = requireAuth({
+            title: "Entre para usar a ObyronAI",
+            description: "A troca entre modos de IA fica disponivel apenas para usuarios autenticados.",
+          });
+
+          if (!allowed) {
+            event.preventDefault();
+          }
+        }}
         role="tab"
         aria-selected={active === "obyronai"}
         className={cn(
@@ -36,6 +49,16 @@ export function AiModeToggle({
       </Link>
       <Link
         href="/neural"
+        onClick={(event) => {
+          const allowed = requireAuth({
+            title: "Entre para usar a Neural",
+            description: "A troca entre modos de IA fica disponivel apenas para usuarios autenticados.",
+          });
+
+          if (!allowed) {
+            event.preventDefault();
+          }
+        }}
         role="tab"
         aria-selected={active === "neural"}
         className={cn(

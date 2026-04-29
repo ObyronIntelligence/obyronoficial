@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { LiquidMetal } from "@paper-design/shaders-react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -46,6 +47,23 @@ export function LiquidMetalHero({
   features = [],
 }: LiquidMetalHeroProps) {
   const router = useRouter();
+  const { requireAuth } = useAuth();
+
+  const handleProtectedNavigation = (href: string, mode: "primary" | "secondary") => {
+    const allowed = requireAuth({
+      title: mode === "primary" ? "Crie sua conta para continuar" : "Entre para seguir navegando",
+      description:
+        mode === "primary"
+          ? "Para iniciar a experiencia da Obyron, primeiro precisamos do seu login ou cadastro."
+          : "Este proximo passo da jornada tambem exige uma conta ativa.",
+    });
+
+    if (!allowed) {
+      return;
+    }
+
+    router.push(href);
+  };
 
   return (
     <section className="relative w-full">
@@ -102,7 +120,7 @@ export function LiquidMetalHero({
           >
             <Button
               size="lg"
-              onClick={() => router.push(primaryHref)}
+              onClick={() => handleProtectedNavigation(primaryHref, "primary")}
               className="group h-12 gap-2 bg-foreground px-7 text-background hover:bg-foreground/90"
             >
               {primaryCtaLabel}
@@ -112,7 +130,7 @@ export function LiquidMetalHero({
               <Button
                 size="lg"
                 variant="outline"
-                onClick={() => router.push(secondaryHref)}
+                onClick={() => handleProtectedNavigation(secondaryHref, "secondary")}
                 className="h-12 border-border/60 bg-card/40 px-7 backdrop-blur-md hover:bg-card/70"
               >
                 {secondaryCtaLabel}

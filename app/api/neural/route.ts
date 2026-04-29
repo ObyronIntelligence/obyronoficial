@@ -4,6 +4,7 @@ import { ObyronOrchestrator } from "@/lib/core/agent-orchestrator";
 import { ObsidianMemory } from "@/lib/memory/obsidian-sync";
 import { ObsidianAPI } from "@/lib/memory/obsidian-api";
 import { GoogleAutomationService } from "@/lib/actions/google-automation";
+import { classificationService } from "@/lib/services/classification-service";
 
 function resolveVaultPath() {
   const configuredVault = process.env.OBSIDIAN_VAULT_PATH || "./obsidian";
@@ -43,17 +44,35 @@ async function buildMemoryContext(prompt: string) {
 }
 
 export async function POST(request: NextRequest) {
+  let promptValue = "";
+
   try {
-    const { prompt } = await request.json();
+    const { prompt, persistMemory = true } = await request.json();
+    promptValue = typeof prompt === "string" ? prompt : "";
 
     if (!prompt || typeof prompt !== "string") {
       return NextResponse.json({ error: "Prompt invalido." }, { status: 400 });
     }
 
     const context = await buildMemoryContext(prompt);
-    const { reply, obsidian_actions, google_actions } = await ObyronOrchestrator.chat(prompt, context || undefined);
+    const groqAvailable = Boolean(process.env.GROQ_API_KEY);
 
-    if (obsidian_actions.length > 0) {
+    if (!groqAvailable) {
+      const fallbackClassification = classificationService.classifyText(prompt);
+      return NextResponse.json({
+        reply: classificationService.buildFallbackReply(fallbackClassification),
+        automationResults: [],
+        memoryContext: context,
+        fallback: true,
+      });
+    }
+
+    const { reply, obsidian_actions, google_actions } = await ObyronOrchestrator.chat(
+      prompt,
+      context || undefined,
+    );
+
+    if (persistMemory !== false && obsidian_actions.length > 0) {
       for (const note of obsidian_actions) {
         try {
           await ObsidianAPI.createStructuredNote(note);
@@ -85,6 +104,22 @@ export async function POST(request: NextRequest) {
     console.error("[OBYRON API ERROR]", error?.message);
 
     const msg = error?.message || "";
+    if (
+      msg.includes("GROQ_API_KEY") ||
+      msg.includes("fetch failed") ||
+      msg.includes("ECONNREFUSED") ||
+      msg.includes("rate limit")
+    ) {
+      const fallbackClassification = classificationService.classifyText(
+        promptValue || "Memoria registrada pela Neural.",
+      );
+      return NextResponse.json({
+        reply: classificationService.buildFallbackReply(fallbackClassification),
+        automationResults: [],
+        fallback: true,
+      });
+    }
+
     let userMessage = "Erro interno no processamento neural.";
 
     if (msg.includes("GROQ_API_KEY")) {

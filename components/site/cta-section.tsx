@@ -1,8 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { buttonVariants } from "@/components/ui/button";
 
 export function CtaSection() {
+  const { requireAuth } = useAuth();
+
   return (
     <section className="relative w-full overflow-hidden py-24">
       <div className="container mx-auto px-6">
@@ -17,7 +22,17 @@ export function CtaSection() {
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
-                href="/auth/signup"
+                href="/neural"
+                onClick={(event) => {
+                  const allowed = requireAuth({
+                    title: "Crie sua conta para continuar",
+                    description: "O acesso as automacoes e experiencias da Obyron exige login ou cadastro.",
+                  });
+
+                  if (!allowed) {
+                    event.preventDefault();
+                  }
+                }}
                 className={buttonVariants({
                   size: "lg",
                   className: "group bg-foreground text-background hover:bg-foreground/90",
