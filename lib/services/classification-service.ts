@@ -410,6 +410,11 @@ export const classificationService = {
     };
   },
   buildFallbackReply(result: NeuralClassificationResult) {
-    return `Entendi. Organizei isso em ${result.parentCategory} > ${result.subcategory} e vou manter essa memoria conectada para as proximas conversas.`;
+    const subject = result.subcategory.toLowerCase();
+    return [
+      `Sobre ${subject}: eu consigo organizar essa conversa como uma linha de raciocinio dentro de ${result.parentCategory} > ${result.subcategory}.`,
+      "No momento, minha resposta completa depende da chave de IA configurada no ambiente; enquanto isso, deixei o registro estruturado para a memoria local/Obsidian.",
+      "Quando a IA remota estiver ativa, eu vou explicar o assunto no site primeiro e salvar a sintese organizada em paralelo.",
+    ].join(" ");
   },
 };

@@ -1,14 +1,25 @@
 import { NextResponse } from "next/server";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
+function hasPlaceholderSupabaseValues(env: ReturnType<typeof getSupabaseEnv>) {
+  return (
+    env.url.includes("your-project.supabase.co") ||
+    env.publishableKey.includes("xxxxxxxx") ||
+    env.publishableKey.includes("sua-chave")
+  );
+}
+
 export async function GET() {
   const env = getSupabaseEnv();
 
-  if (!env.configured) {
+  if (!env.configured || hasPlaceholderSupabaseValues(env)) {
     return NextResponse.json({
       configured: false,
       connected: false,
-      error: "Variaveis do Supabase ausentes.",
+      projectRef: env.projectRef,
+      resolvedUrl: env.url,
+      error:
+        "Supabase nao configurado. Troque NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY no .env.local por valores reais do seu projeto.",
     });
   }
 

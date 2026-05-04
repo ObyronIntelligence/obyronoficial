@@ -2,6 +2,9 @@ import type { GoogleAction } from "@/lib/types";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_API_BASE = "https://www.googleapis.com";
+export const GOOGLE_CALENDAR_SCOPES = [
+  "https://www.googleapis.com/auth/calendar.events",
+];
 
 function parseJsonEnv<T>(rawValue: string | undefined, fallback: T): T {
   if (!rawValue) return fallback;
@@ -19,6 +22,28 @@ function normalizeDatePayload(value: string, timeZone: string) {
   }
 
   return { dateTime: value, timeZone };
+}
+
+function resolveCalendarEnd(params: Record<string, any>) {
+  if (params.end) {
+    return params.end;
+  }
+
+  const start = params.start;
+  const durationHours = Number(params.durationHours || params.duration_hours || 0);
+  const durationMinutes = Number(params.durationMinutes || params.duration_minutes || 0);
+
+  if (!start || (!durationHours && !durationMinutes)) {
+    return "";
+  }
+
+  const startDate = new Date(start);
+  if (Number.isNaN(startDate.getTime())) {
+    return "";
+  }
+
+  const durationMs = (durationHours * 60 + durationMinutes) * 60 * 1000;
+  return new Date(startDate.getTime() + durationMs).toISOString();
 }
 
 function resolveSpreadsheetId(reference?: string): string | undefined {
@@ -42,16 +67,16 @@ async function getGoogleAccessToken(): Promise<string> {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
 
-  if (!clientId || !clientSecret || !refreshToken) {
+  if (isPlaceholder(clientId) || isPlaceholder(clientSecret) || isPlaceholder(refreshToken)) {
     throw new Error(
       "Integração Google não configurada. Defina GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_REFRESH_TOKEN."
     );
   }
 
   const body = new URLSearchParams({
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: refreshToken,
+    client_id: clientId!,
+    client_secret: clientSecret!,
+    refresh_token: refreshToken!,
     grant_type: "refresh_token",
   });
 
@@ -68,6 +93,11 @@ async function getGoogleAccessToken(): Promise<string> {
   }
 
   return data.access_token as string;
+}
+
+function isPlaceholder(value: string | undefined) {
+  if (!value) return true;
+  return value.includes("your-google") || value.includes("seu-refresh-token") || value.includes("sua-chave");
 }
 
 async function googleFetch<T>(endpoint: string, init: RequestInit = {}): Promise<T> {
@@ -96,13 +126,14 @@ type AutomationResult = {
 
 export class GoogleAutomationService {
   static getStatus() {
-    const configured =
-      Boolean(process.env.GOOGLE_CLIENT_ID) &&
-      Boolean(process.env.GOOGLE_CLIENT_SECRET) &&
-      Boolean(process.env.GOOGLE_REFRESH_TOKEN);
+    const clientConfigured = !isPlaceholder(process.env.GOOGLE_CLIENT_ID) && !isPlaceholder(process.env.GOOGLE_CLIENT_SECRET);
+    const refreshTokenConfigured = !isPlaceholder(process.env.GOOGLE_REFRESH_TOKEN);
+    const configured = clientConfigured && refreshTokenConfigured;
 
     return {
       configured,
+      clientConfigured,
+      refreshTokenConfigured,
       calendarDefaultId: process.env.GOOGLE_CALENDAR_ID || "primary",
       sheetsDefaultId: process.env.GOOGLE_SHEETS_DEFAULT_SPREADSHEET_ID || null,
       sheetsAliasesConfigured: Boolean(process.env.GOOGLE_SHEETS_ALIASES),
@@ -138,7 +169,7 @@ export class GoogleAutomationService {
 
     if (action.operation === "create_event") {
       const start = action.params.start;
-      const end = action.params.end;
+      const end = resolveCalendarEnd(action.params);
       const summary = action.params.summary;
 
       if (!summary || !start || !end) {

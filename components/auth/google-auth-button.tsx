@@ -5,6 +5,13 @@ import { Button } from "@/components/ui/button";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
+type SupabaseHealthPayload = {
+  authProviders?: string[];
+  configured?: boolean;
+  connected?: boolean;
+  error?: string;
+};
+
 function GoogleMark() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0">
@@ -46,7 +53,7 @@ export function GoogleAuthButton({
     onError?.("");
 
     try {
-      const healthPayload = await fetch("/api/supabase", {
+      const healthPayload: SupabaseHealthPayload | null = await fetch("/api/supabase", {
         cache: "no-store",
       })
         .then(async (response) => {
@@ -58,8 +65,21 @@ export function GoogleAuthButton({
         })
         .catch(() => null);
 
+      if (!healthPayload?.configured) {
+        throw new Error(
+          healthPayload?.error ||
+            "Supabase nao configurado. Preencha o .env.local com a URL e a chave publica reais do seu projeto.",
+        );
+      }
+
+      if (!healthPayload.connected) {
+        throw new Error(
+          healthPayload.error ||
+            "Nao foi possivel conectar ao Supabase. Confira NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY no .env.local.",
+        );
+      }
+
       const googleKnownDisabled =
-        healthPayload?.connected === true &&
         Array.isArray(healthPayload?.authProviders) &&
         !healthPayload.authProviders.includes("google");
 
